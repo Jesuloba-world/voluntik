@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: postgres.Dockerfile
+    image: voluntik-postgres
+    container_name: voluntik-db-dev
+    environment:
+      POSTGRES_DB: voluntik
+      POSTGRES_USER: voluntik_user
+      POSTGRES_PASSWORD: securepassword
+      POSTGRES_HOST_AUTH_METHOD: md5
+      POSTGRES_INITDB_ARGS: --auth=md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  redis:
+    build: .
+    image: voluntik-redis
+    container_name: voluntik-redis-dev
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "500mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: voluntik-pgbouncer-dev
+    depends_on:
+      - db
+    ports:
+      - "6432:5432"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=voluntik_user
+      - DB_PASSWORD=securepassword
+      - POOL_MODE=transaction
+      - MAX_CLIENT_CONN=100
+      - DEFAULT_POOL_SIZE=20
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/backend.Dockerfile
+    image: voluntik-backend
+    container_name: voluntik-backend-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - pgbouncer
+      - redis
+    volumes:
+      - ../backend:/app
+    environment:
+      - DB_HOST=pgbouncer
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+
+  frontend:
+    build: ../frontend
+    image: voluntik-frontend
+    container_name: voluntik-frontend-dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+
+volumes:
+  db-data:
+  redis-data:

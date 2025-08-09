@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: postgres.Dockerfile
+    image: voluntik-postgres
+    container_name: voluntik-db-staging
+    environment:
+      POSTGRES_DB: voluntik_staging
+      POSTGRES_USER: voluntik_user
+      POSTGRES_PASSWORD: securepassword
+      POSTGRES_HOST_AUTH_METHOD: md5
+      POSTGRES_INITDB_ARGS: --auth=md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voluntik_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    build:
+      context: .
+      dockerfile: redis.Dockerfile
+    image: voluntik-redis
+    container_name: voluntik-redis-staging
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "1gb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: voluntik-pgbouncer-staging
+    depends_on:
+      - db
+    ports:
+      - "6432:5432"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=voluntik_user
+      - DB_PASSWORD=securepassword
+      - POOL_MODE=transaction
+      - MAX_CLIENT_CONN=200
+      - DEFAULT_POOL_SIZE=50
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/backend.Dockerfile
+    image: voluntik-backend
+    container_name: voluntik-backend-staging
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    environment:
+      - DB_HOST=pgbouncer
+      - DB_PORT=5432
+      - REDIS_HOST=redis
+      - ENV=staging
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    image: voluntik-frontend
+    container_name: voluntik-frontend-staging
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8080
+      - ENV=staging
+
+  nginx:
+    image: nginx:latest
+    container_name: voluntik-nginx-staging
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-staging.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot-staging/www:/var/www/certbot/:ro
+      - ./certbot-staging/conf:/etc/letsencrypt/:ro
+    depends_on:
+      - frontend
+      - backend
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: voluntik-certbot-staging
+    volumes:
+      - ./certbot-staging/www/:/var/www/certbot/:rw
+      - ./certbot-staging/conf/:/etc/letsencrypt/:rw
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  db-data:
+  redis-data:

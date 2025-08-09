@@ -1,0 +1,51 @@
+# Go binaries
+/backend
+/backend.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build artifacts
+/bin/
+/build/
+/dist/
+/out/
+/tmp/
+*.a
+*.o
+*.out
+*.test
+
+# Coverage
+coverage.out
+cover.out
+cov.out
+*.coverprofile
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.*
+.env.*.local
+
+# Generated API docs
+openapi.json
+openapi.yaml
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Caches
+.cache/
