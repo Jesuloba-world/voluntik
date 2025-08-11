@@ -1,10 +1,7 @@
-FROM redis:7-alpine
+FROM docker.dragonflydb.io/dragonflydb/dragonfly:latest
 
-# Copy custom configuration
-# COPY redis.conf /usr/local/etc/redis/redis.conf
-
-# Enable persistence (AOF or RDB)
-CMD ["redis-server", "--appendonly", "yes"]
+# Dragonfly automatically handles persistence and memory management
+CMD ["dragonfly", "--logtostderr"]
 
 # Expose port
 EXPOSE 6379

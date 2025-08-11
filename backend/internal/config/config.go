@@ -48,6 +48,8 @@ func Load() (*Config, error) {
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("./config")
+	viper.AddConfigPath("/app")
+	viper.AddConfigPath("/app/config")
 
 	// Defaults
 	viper.SetDefault("database.dsn", "postgres://voluntik_user:securepassword@localhost:5432/voluntik?sslmode=disable")

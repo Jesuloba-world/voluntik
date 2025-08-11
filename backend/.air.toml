@@ -1,0 +1,21 @@
+# Air configuration for live reloading
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o tmp/backend ./cmd/backend"
+  bin = "tmp/backend"
+  include_dir = ["cmd", "internal"]
+  include_ext = ["go", "yaml"]
+  exclude_dir = ["vendor", "tmp"]
+  delay = 200
+  kill_delay = 500
+
+[screen]
+  clear_on_rebuild = true
+
+[log]
+  color = true
+
+[env]
+  PORT = "8080"

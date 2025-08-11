@@ -9,9 +9,9 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/voluntik/backend/internal/application/services"
+	"github.com/voluntik/backend/internal/config"
 	"github.com/voluntik/backend/internal/infrastructure/auth"
 	"github.com/voluntik/backend/internal/infrastructure/session"
-	"github.com/voluntik/backend/internal/config"
 )
 
 type UserHandler struct {
@@ -82,7 +82,7 @@ func (h *UserHandler) Register(ctx context.Context, input *RegisterInput) (*Regi
 }
 
 type GoogleLoginOutput struct {
-	Status    int         `json:"-"`
+	Body      struct{}    `json:"-" status:"307"`
 	Location  string      `header:"Location" example:"https://accounts.google.com/o/oauth2/v2/auth?..." doc:"Redirect to Google OAuth URL"`
 	SetCookie http.Cookie `header:"Set-Cookie" doc:"Short-lived OAuth state cookie"`
 }
@@ -97,7 +97,6 @@ func (h *UserHandler) GoogleLogin(ctx context.Context, input *struct{}) (*Google
 	secure := config.Get().Server.Environment == "production"
 	cookie := http.Cookie{Name: "oauth_state", Value: state, Path: "/", MaxAge: 300, HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode}
 	return &GoogleLoginOutput{
-		Status:    http.StatusTemporaryRedirect,
 		Location:  url,
 		SetCookie: cookie,
 	}, nil
@@ -110,7 +109,7 @@ type GoogleCallbackInput struct {
 }
 
 type GoogleCallbackOutput struct {
-	Status    int         `json:"-"`
+	Body      struct{}    `json:"-" status:"302"`
 	Location  string      `header:"Location" example:"https://app.example.com/?token=eyJ..." doc:"Redirect back to app with JWT token"`
 	SetCookie http.Cookie `header:"Set-Cookie" doc:"Session cookie (vt_session)"`
 }
@@ -150,7 +149,6 @@ func (h *UserHandler) GoogleCallback(ctx context.Context, input *GoogleCallbackI
 		redirectURL = "/"
 	}
 	return &GoogleCallbackOutput{
-		Status:    http.StatusFound,
 		Location:  redirectURL + "?token=" + jwtToken,
 		SetCookie: setSessCookie,
 	}, nil
@@ -227,7 +225,7 @@ func NewHealthHandler(rdb *redis.Client, env string) *HealthHandler {
 }
 
 type HealthOutput struct {
-	Status string `json:"status" example:"ok"`
+	Health string `json:"status" example:"ok"`
 	Env    string `json:"env" example:"development"`
 	Redis  string `json:"redis" example:"ok"`
 }
@@ -241,5 +239,5 @@ func (h *HealthHandler) Health(ctx context.Context, input *struct{}) (*HealthOut
 			redisStatus = "ok"
 		}
 	}
-	return &HealthOutput{Status: "ok", Env: h.env, Redis: redisStatus}, nil
+	return &HealthOutput{Health: "ok", Env: h.env, Redis: redisStatus}, nil
 }
